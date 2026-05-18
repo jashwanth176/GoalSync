@@ -3,64 +3,211 @@ import { showToast } from '../main.js';
 
 export async function renderEscalation(el) {
   const rules = await api.admin.getEscalationRules();
-  const triggerLabels = { goal_not_submitted: '📋 Goal Not Submitted', goal_not_approved: '✅ Goal Not Approved', checkin_not_completed: '📝 Check-in Not Completed' };
+  const triggerLabels = {
+    goal_not_submitted: { icon: '📋', label: 'Goal Not Submitted', desc: 'Triggers when employee hasn\'t submitted goals within the delay period after cycle opens' },
+    goal_not_approved: { icon: '✅', label: 'Goal Not Approved', desc: 'Triggers when manager hasn\'t approved goals within the delay period after submission' },
+    checkin_not_completed: { icon: '📝', label: 'Check-in Not Completed', desc: 'Triggers when quarterly check-in isn\'t completed within the active window' }
+  };
+
+  const sampleLogs = [
+    { date: new Date(), rule: 'goal_not_submitted', employee: 'Sneha Reddy', escalatedTo: 'Rajesh Kumar (Manager)', level: 1, status: 'pending', detail: 'Goal sheet not submitted — 7 days overdue' },
+    { date: new Date(Date.now()-86400000), rule: 'goal_not_submitted', employee: 'Sneha Reddy', escalatedTo: 'Priya Sharma (HR)', level: 2, status: 'pending', detail: 'Auto-escalated to HR — 14 days overdue' },
+    { date: new Date(Date.now()-172800000), rule: 'goal_not_approved', employee: 'Vikram Singh', escalatedTo: 'Anita Desai (Manager)', level: 1, status: 'resolved', detail: 'Manager approval pending — 5 days overdue' },
+    { date: new Date(Date.now()-259200000), rule: 'checkin_not_completed', employee: 'Rohit Nair', escalatedTo: 'Rajesh Kumar (Manager)', level: 1, status: 'resolved', detail: 'Q1 check-in not completed within window' },
+  ];
 
   el.innerHTML = `
-    <div class="page-header flex-between">
-      <div><h1>Escalation Rules</h1><p>Configure automated escalation triggers</p></div>
-      <button class="btn btn-primary" id="addRule">+ Add Rule</button>
+    <div class="page-header"><h1>Escalation Rules & Logs</h1><p>Configure automated escalation triggers and track resolution</p></div>
+
+    <div class="tabs" style="margin-bottom:24px">
+      <button class="tab active" data-tab="rules">⚙️ Rules Configuration</button>
+      <button class="tab" data-tab="logs">📋 Escalation Log</button>
+      <button class="tab" data-tab="chain">🔗 Escalation Chain</button>
     </div>
-    <div id="rulesList">
-      ${rules.map((r,i) => `
-        <div class="glass-card animate-fade-up stagger-${i+1}" style="padding:20px;margin-bottom:16px;border-left:3px solid ${r.active?'var(--accent)':'var(--text-muted)'}">
-          <div class="flex-between" style="margin-bottom:8px">
-            <div class="flex gap-sm" style="align-items:center"><span style="font-size:20px">${triggerLabels[r.triggerType]?.split(' ')[0]||'⚡'}</span><h3 style="font-size:var(--text-lg)">${triggerLabels[r.triggerType]?.substring(2)||r.triggerType}</h3></div>
-            <div class="flex gap-sm">
-              <span class="badge ${r.active?'badge-success':'badge-neutral'}">${r.active?'Active':'Inactive'}</span>
-              <button class="btn btn-ghost btn-sm toggle-rule" data-id="${r.id}" data-active="${r.active?0:1}">${r.active?'Disable':'Enable'}</button>
-              <button class="btn btn-ghost btn-sm del-rule" data-id="${r.id}" style="color:var(--danger)">🗑️</button>
-            </div>
-          </div>
-          <p style="font-size:var(--text-sm);margin-bottom:8px">${r.description||'No description'}</p>
-          <div class="flex gap-md">
-            <div class="glass-panel" style="padding:8px 14px"><span style="font-size:var(--text-xs);color:var(--text-muted)">Delay</span><div style="font-weight:600">${r.delayDays} days</div></div>
-            <div class="glass-panel" style="padding:8px 14px"><span style="font-size:var(--text-xs);color:var(--text-muted)">Chain</span><div style="font-weight:600">Employee → Manager → HR</div></div>
-          </div>
-        </div>
-      `).join('')}
-    </div>
+
+    <div id="escalationContent"></div>
+
     <div class="modal-overlay" id="ruleModal" style="display:none">
       <div class="modal-content">
         <div class="modal-header"><h3>Add Escalation Rule</h3><button class="btn btn-ghost btn-icon" id="closeRuleModal">✕</button></div>
         <div class="modal-body">
           <div class="form-group" style="margin-bottom:16px"><label class="form-label">Trigger Type</label>
             <select class="form-select" id="rTrigger"><option value="goal_not_submitted">Goal Not Submitted</option><option value="goal_not_approved">Goal Not Approved</option><option value="checkin_not_completed">Check-in Not Completed</option></select></div>
-          <div class="form-group" style="margin-bottom:16px"><label class="form-label">Delay (days)</label><input class="form-input" id="rDelay" type="number" value="7" min="1"></div>
-          <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="rDesc"></textarea></div>
+          <div class="form-group" style="margin-bottom:16px"><label class="form-label">Delay (days after trigger event)</label><input class="form-input" id="rDelay" type="number" value="7" min="1" max="30"></div>
+          <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="rDesc" placeholder="Describe when and how this escalation should occur..."></textarea></div>
         </div>
         <div class="modal-footer"><button class="btn btn-ghost" id="cancelRule">Cancel</button><button class="btn btn-primary" id="saveRule">Save Rule</button></div>
       </div>
     </div>`;
 
+  function renderRulesTab() {
+    const content = document.getElementById('escalationContent');
+    content.innerHTML = `
+      <div class="flex-between" style="margin-bottom:20px">
+        <h3>${rules.length} rule${rules.length!==1?'s':''} configured</h3>
+        <button class="btn btn-primary" id="addRule">+ Add Rule</button>
+      </div>
+      ${rules.length === 0 ? `<div class="empty-state"><div class="empty-state-icon">⚡</div><div class="empty-state-title">No Escalation Rules</div><p class="empty-state-text">Create your first rule to enable automated escalations</p></div>` :
+      `<div class="grid grid-2">${rules.map((r,i) => {
+        const info = triggerLabels[r.triggerType] || { icon:'⚡', label: r.triggerType, desc:'' };
+        return `
+          <div class="glass-card animate-fade-up stagger-${i+1}" style="padding:24px;border-left:4px solid ${r.active?'var(--accent)':'var(--glass-border)'}">
+            <div class="flex-between" style="margin-bottom:12px">
+              <div class="flex gap-sm" style="align-items:center">
+                <span style="font-size:24px">${info.icon}</span>
+                <h4 style="font-size:var(--text-lg)">${info.label}</h4>
+              </div>
+              <span class="badge ${r.active?'badge-success':'badge-neutral'}">${r.active?'Active':'Inactive'}</span>
+            </div>
+            <p style="font-size:var(--text-sm);color:var(--text-secondary);margin-bottom:16px">${r.description || info.desc}</p>
+            <div class="flex gap-md" style="margin-bottom:16px">
+              <div class="glass-panel" style="padding:10px 16px;flex:1;text-align:center">
+                <div style="font-size:var(--text-xs);color:var(--text-muted)">Delay</div>
+                <div style="font-weight:700;font-size:var(--text-lg);color:var(--accent-dark)">${r.delayDays} days</div>
+              </div>
+              <div class="glass-panel" style="padding:10px 16px;flex:1;text-align:center">
+                <div style="font-size:var(--text-xs);color:var(--text-muted)">Chain</div>
+                <div style="font-weight:700;font-size:var(--text-lg);color:var(--text-primary)">3 levels</div>
+              </div>
+            </div>
+            <div class="flex gap-sm">
+              <button class="btn ${r.active?'btn-outline':'btn-success'} btn-sm toggle-rule" data-id="${r.id}" data-active="${r.active?0:1}" style="flex:1">${r.active?'⏸ Disable':'▶ Enable'}</button>
+              <button class="btn btn-ghost btn-sm del-rule" data-id="${r.id}" style="color:var(--danger)">🗑️ Delete</button>
+            </div>
+          </div>`;
+      }).join('')}</div>`}`;
+
+    document.getElementById('addRule')?.addEventListener('click', () => {
+      document.getElementById('ruleModal').style.display = 'flex';
+    });
+    content.querySelectorAll('.toggle-rule').forEach(b => b.addEventListener('click', async () => {
+      try { await api.admin.updateEscalationRule(b.dataset.id, { active: parseInt(b.dataset.active) }); showToast('success','Updated',''); renderEscalation(el); } catch(e) { showToast('error','Error',e.message); }
+    }));
+    content.querySelectorAll('.del-rule').forEach(b => b.addEventListener('click', async () => {
+      if (!confirm('Delete this escalation rule?')) return;
+      try { await api.admin.deleteEscalationRule(b.dataset.id); showToast('success','Deleted',''); renderEscalation(el); } catch(e) { showToast('error','Error',e.message); }
+    }));
+  }
+
+  function renderLogsTab() {
+    const content = document.getElementById('escalationContent');
+    const pendingCount = sampleLogs.filter(l => l.status === 'pending').length;
+    const resolvedCount = sampleLogs.filter(l => l.status === 'resolved').length;
+    content.innerHTML = `
+      <div class="grid grid-3" style="margin-bottom:24px">
+        <div class="stat-card"><div class="stat-value">${sampleLogs.length}</div><div class="stat-label">Total Escalations</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:var(--danger)">${pendingCount}</div><div class="stat-label">Pending Resolution</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:var(--success)">${resolvedCount}</div><div class="stat-label">Resolved</div></div>
+      </div>
+      <div class="glass-card" style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Date</th><th>Trigger</th><th>Employee</th><th>Escalated To</th><th>Level</th><th>Detail</th><th>Status</th></tr></thead>
+          <tbody>${sampleLogs.map(l => {
+            const info = triggerLabels[l.rule] || {};
+            return `<tr>
+              <td style="white-space:nowrap">${l.date.toLocaleDateString()}</td>
+              <td><span class="badge badge-accent">${info.icon||''} ${info.label||l.rule}</span></td>
+              <td style="font-weight:500">${l.employee}</td>
+              <td>${l.escalatedTo}</td>
+              <td><span class="badge ${l.level>=2?'badge-danger':'badge-warning'}">L${l.level}</span></td>
+              <td style="font-size:var(--text-sm)">${l.detail}</td>
+              <td><span class="badge ${l.status==='resolved'?'badge-success':'badge-danger'}">${l.status}</span></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function renderChainTab() {
+    const content = document.getElementById('escalationContent');
+    content.innerHTML = `
+      <div class="glass-card" style="padding:24px;margin-bottom:24px">
+        <h3 style="margin-bottom:16px">Escalation Chain Configuration</h3>
+        <p style="font-size:var(--text-sm);color:var(--text-secondary);margin-bottom:24px">
+          When a rule is triggered, the system follows this escalation path. Each level is activated after the configured delay if the issue remains unresolved.
+        </p>
+        <div style="display:flex;align-items:flex-start;gap:0;position:relative">
+          ${[
+            { level: 'Level 1', target: 'Employee', icon: '👤', color: 'var(--info)', action: 'Auto-notify employee via email & in-app notification', delay: 'N days after trigger' },
+            { level: 'Level 2', target: 'Manager (L1)', icon: '👔', color: 'var(--warning)', action: 'Escalate to direct manager with summary of pending items', delay: 'N+3 days' },
+            { level: 'Level 3', target: 'HR / Admin', icon: '🛡️', color: 'var(--danger)', action: 'Escalate to HR team with full audit trail & recommended action', delay: 'N+7 days' },
+          ].map((step, i) => `
+            <div style="flex:1;text-align:center;position:relative">
+              <div style="width:64px;height:64px;border-radius:50%;background:${step.color};display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px;color:white;box-shadow:0 4px 12px ${step.color}33">${step.icon}</div>
+              <div style="font-weight:700;font-size:var(--text-base);margin-bottom:4px">${step.level}</div>
+              <div style="font-weight:600;font-size:var(--text-sm);color:var(--text-primary);margin-bottom:8px">${step.target}</div>
+              <div style="font-size:var(--text-xs);color:var(--text-muted);margin-bottom:4px">${step.action}</div>
+              <span class="badge badge-neutral" style="margin-top:4px">${step.delay}</span>
+              ${i < 2 ? '<div style="position:absolute;top:32px;right:-16px;font-size:24px;color:var(--text-muted)">→</div>' : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="glass-card" style="padding:24px">
+          <h4 style="margin-bottom:16px">📧 Notification Channels</h4>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="glass-panel" style="padding:12px;display:flex;align-items:center;gap:12px;border-left:3px solid var(--info)">
+              <span style="font-size:24px">📨</span>
+              <div><div style="font-weight:600;font-size:var(--text-sm)">Email Notification</div><div style="font-size:var(--text-xs);color:var(--text-muted)">Automated email with deep-link to pending action</div></div>
+            </div>
+            <div class="glass-panel" style="padding:12px;display:flex;align-items:center;gap:12px;border-left:3px solid #7B68EE">
+              <span style="font-size:24px">💬</span>
+              <div><div style="font-weight:600;font-size:var(--text-sm)">MS Teams Notification</div><div style="font-size:var(--text-xs);color:var(--text-muted)">Adaptive card in Teams with action buttons</div></div>
+            </div>
+            <div class="glass-panel" style="padding:12px;display:flex;align-items:center;gap:12px;border-left:3px solid var(--accent)">
+              <span style="font-size:24px">🔔</span>
+              <div><div style="font-weight:600;font-size:var(--text-sm)">In-App Notification</div><div style="font-size:var(--text-xs);color:var(--text-muted)">Bell icon badge with deep-link to relevant page</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="glass-card" style="padding:24px">
+          <h4 style="margin-bottom:16px">🔐 Integration Status</h4>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="glass-panel" style="padding:12px;display:flex;align-items:center;gap:12px">
+              <span style="font-size:24px">🔵</span>
+              <div style="flex:1"><div style="font-weight:600;font-size:var(--text-sm)">Microsoft Entra ID (Azure AD)</div><div style="font-size:var(--text-xs);color:var(--text-muted)">SSO & org hierarchy sync</div></div>
+              <span class="badge badge-neutral">Ready</span>
+            </div>
+            <div class="glass-panel" style="padding:12px;display:flex;align-items:center;gap:12px">
+              <span style="font-size:24px">📧</span>
+              <div style="flex:1"><div style="font-weight:600;font-size:var(--text-sm)">SMTP Email</div><div style="font-size:var(--text-xs);color:var(--text-muted)">Transactional email delivery</div></div>
+              <span class="badge badge-success">Active</span>
+            </div>
+            <div class="glass-panel" style="padding:12px;display:flex;align-items:center;gap:12px">
+              <span style="font-size:24px">💬</span>
+              <div style="flex:1"><div style="font-weight:600;font-size:var(--text-sm)">Microsoft Teams Bot</div><div style="font-size:var(--text-xs);color:var(--text-muted)">Adaptive card notifications</div></div>
+              <span class="badge badge-neutral">Ready</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function switchTab(tab) {
+    el.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    if (tab === 'rules') renderRulesTab();
+    else if (tab === 'logs') renderLogsTab();
+    else if (tab === 'chain') renderChainTab();
+  }
+
+  el.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+  switchTab('rules');
+
   const modal = document.getElementById('ruleModal');
-  document.getElementById('addRule').onclick = () => modal.style.display = 'flex';
   document.getElementById('closeRuleModal').onclick = () => modal.style.display = 'none';
   document.getElementById('cancelRule').onclick = () => modal.style.display = 'none';
-
   document.getElementById('saveRule').addEventListener('click', async () => {
     try {
-      await api.admin.createEscalationRule({ triggerType: document.getElementById('rTrigger').value, delayDays: parseInt(document.getElementById('rDelay').value), description: document.getElementById('rDesc').value });
+      await api.admin.createEscalationRule({
+        triggerType: document.getElementById('rTrigger').value,
+        delayDays: parseInt(document.getElementById('rDelay').value),
+        description: document.getElementById('rDesc').value
+      });
       showToast('success','Created','Escalation rule added');
       modal.style.display = 'none';
       renderEscalation(el);
     } catch(e) { showToast('error','Error',e.message); }
   });
-
-  el.querySelectorAll('.toggle-rule').forEach(b => b.addEventListener('click', async () => {
-    try { await api.admin.updateEscalationRule(b.dataset.id, { active: parseInt(b.dataset.active) }); renderEscalation(el); } catch(e) { showToast('error','Error',e.message); }
-  }));
-  el.querySelectorAll('.del-rule').forEach(b => b.addEventListener('click', async () => {
-    if (!confirm('Delete this rule?')) return;
-    try { await api.admin.deleteEscalationRule(b.dataset.id); showToast('success','Deleted',''); renderEscalation(el); } catch(e) { showToast('error','Error',e.message); }
-  }));
 }
