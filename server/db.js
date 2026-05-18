@@ -16,6 +16,7 @@ export function initDB() {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL DEFAULT 'atomberg@123',
       department TEXT NOT NULL,
       role TEXT NOT NULL CHECK(role IN ('employee','manager','admin')),
       managerId TEXT,
@@ -130,6 +131,34 @@ export function initDB() {
       createdAt TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS escalation_log (
+      id TEXT PRIMARY KEY,
+      ruleId TEXT,
+      triggerType TEXT NOT NULL,
+      employeeId TEXT NOT NULL,
+      escalatedToId TEXT NOT NULL,
+      escalationLevel INTEGER DEFAULT 1,
+      detail TEXT,
+      status TEXT DEFAULT 'pending' CHECK(status IN ('pending','resolved','dismissed')),
+      resolvedAt TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (ruleId) REFERENCES escalation_rules(id),
+      FOREIGN KEY (employeeId) REFERENCES users(id),
+      FOREIGN KEY (escalatedToId) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS email_log (
+      id TEXT PRIMARY KEY,
+      recipientEmail TEXT NOT NULL,
+      recipientName TEXT,
+      type TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      body TEXT,
+      status TEXT DEFAULT 'sent' CHECK(status IN ('sent','delivered','failed')),
+      channel TEXT DEFAULT 'email' CHECK(channel IN ('email','teams','in_app')),
+      createdAt TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS shared_goal_templates (
       id TEXT PRIMARY KEY,
       createdBy TEXT NOT NULL,
@@ -162,47 +191,38 @@ function seedData() {
   const emp5Id = uuidv4();
   const emp6Id = uuidv4();
 
-  const insertUser = db.prepare(`INSERT INTO users (id, name, email, department, role, managerId, avatar) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  const insertUser = db.prepare(`INSERT INTO users (id, name, email, password, department, role, managerId, avatar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
 
-  insertUser.run(adminId, 'Priya Sharma', 'priya.sharma@atomberg.com', 'HR', 'admin', null, '👩‍💼');
-  insertUser.run(mgr1Id, 'Rajesh Kumar', 'rajesh.kumar@atomberg.com', 'Engineering', 'manager', adminId, '👨‍💻');
-  insertUser.run(mgr2Id, 'Anita Desai', 'anita.desai@atomberg.com', 'Marketing', 'manager', adminId, '👩‍💻');
-  insertUser.run(emp1Id, 'Arjun Patel', 'arjun.patel@atomberg.com', 'Engineering', 'employee', mgr1Id, '🧑‍🔬');
-  insertUser.run(emp2Id, 'Sneha Reddy', 'sneha.reddy@atomberg.com', 'Engineering', 'employee', mgr1Id, '👩‍🔬');
-  insertUser.run(emp3Id, 'Vikram Singh', 'vikram.singh@atomberg.com', 'Engineering', 'employee', mgr1Id, '🧑‍💻');
-  insertUser.run(emp4Id, 'Meera Joshi', 'meera.joshi@atomberg.com', 'Marketing', 'employee', mgr2Id, '👩‍🎨');
-  insertUser.run(emp5Id, 'Rohit Nair', 'rohit.nair@atomberg.com', 'Marketing', 'employee', mgr2Id, '🧑‍🎨');
-  insertUser.run(emp6Id, 'Kavita Menon', 'kavita.menon@atomberg.com', 'Marketing', 'employee', mgr2Id, '👩‍🏫');
+  insertUser.run(adminId, 'Priya Sharma', 'priya.sharma@atomberg.com', 'atomberg@123', 'HR', 'admin', null, '👩‍💼');
+  insertUser.run(mgr1Id, 'Rajesh Kumar', 'rajesh.kumar@atomberg.com', 'atomberg@123', 'Engineering', 'manager', adminId, '👨‍💻');
+  insertUser.run(mgr2Id, 'Anita Desai', 'anita.desai@atomberg.com', 'atomberg@123', 'Marketing', 'manager', adminId, '👩‍💻');
+  insertUser.run(emp1Id, 'Arjun Patel', 'arjun.patel@atomberg.com', 'atomberg@123', 'Engineering', 'employee', mgr1Id, '🧑‍🔬');
+  insertUser.run(emp2Id, 'Sneha Reddy', 'sneha.reddy@atomberg.com', 'atomberg@123', 'Engineering', 'employee', mgr1Id, '👩‍🔬');
+  insertUser.run(emp3Id, 'Vikram Singh', 'vikram.singh@atomberg.com', 'atomberg@123', 'Engineering', 'employee', mgr1Id, '🧑‍💻');
+  insertUser.run(emp4Id, 'Meera Joshi', 'meera.joshi@atomberg.com', 'atomberg@123', 'Marketing', 'employee', mgr2Id, '👩‍🎨');
+  insertUser.run(emp5Id, 'Rohit Nair', 'rohit.nair@atomberg.com', 'atomberg@123', 'Marketing', 'employee', mgr2Id, '🧑‍🎨');
+  insertUser.run(emp6Id, 'Kavita Menon', 'kavita.menon@atomberg.com', 'atomberg@123', 'Marketing', 'employee', mgr2Id, '👩‍🏫');
 
   const cycleId = uuidv4();
   db.prepare(`INSERT INTO cycles (id, name, year, goalSettingOpen, goalSettingClose, q1Open, q1Close, q2Open, q2Close, q3Open, q3Close, q4Open, q4Close, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-    cycleId, 'FY 2025-26', 2025,
-    '2025-05-01', '2025-05-31',
-    '2025-07-01', '2025-07-31',
-    '2025-10-01', '2025-10-31',
-    '2026-01-01', '2026-01-31',
-    '2026-03-01', '2026-04-30',
-    'active'
+    cycleId, 'FY 2025-26', 2025, '2025-05-01', '2025-05-31',
+    '2025-07-01', '2025-07-31', '2025-10-01', '2025-10-31',
+    '2026-01-01', '2026-01-31', '2026-03-01', '2026-04-30', 'active'
   );
 
   const cycleId2 = uuidv4();
   db.prepare(`INSERT INTO cycles (id, name, year, goalSettingOpen, goalSettingClose, q1Open, q1Close, q2Open, q2Close, q3Open, q3Close, q4Open, q4Close, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-    cycleId2, 'FY 2026-27', 2026,
-    '2026-05-01', '2026-05-31',
-    '2026-07-01', '2026-07-31',
-    '2026-10-01', '2026-10-31',
-    '2027-01-01', '2027-01-31',
-    '2027-03-01', '2027-04-30',
-    'active'
+    cycleId2, 'FY 2026-27', 2026, '2026-05-01', '2026-05-31',
+    '2026-07-01', '2026-07-31', '2026-10-01', '2026-10-31',
+    '2027-01-01', '2027-01-31', '2027-03-01', '2027-04-30', 'active'
   );
 
   const gs1Id = uuidv4();
   db.prepare(`INSERT INTO goal_sheets (id, employeeId, cycleId, status, submittedAt) VALUES (?, ?, ?, 'submitted', datetime('now'))`).run(gs1Id, emp1Id, cycleId2);
 
   const insertGoal = db.prepare(`INSERT INTO goals (id, goalSheetId, thrustArea, title, description, uom, uomDirection, target, weightage, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-
   insertGoal.run(uuidv4(), gs1Id, 'Product Innovation', 'Launch BLDC Motor V3', 'Design and deliver the next-gen BLDC motor with 15% better efficiency', 'timeline', 'min', '2026-09-30', 30, 'not_started');
   insertGoal.run(uuidv4(), gs1Id, 'Operational Excellence', 'Reduce Manufacturing Defects', 'Bring defect rate below target threshold', 'percentage', 'max', '2', 25, 'not_started');
   insertGoal.run(uuidv4(), gs1Id, 'Energy Efficiency', 'Improve Energy Rating', 'Achieve 5-star BEE rating for 3 new SKUs', 'numeric', 'min', '3', 25, 'not_started');
@@ -215,6 +235,19 @@ function seedData() {
   const notify = db.prepare(`INSERT INTO notifications (id, userId, type, title, message, link) VALUES (?, ?, ?, ?, ?, ?)`);
   notify.run(uuidv4(), mgr1Id, 'approval', 'Goal Sheet Pending', 'Arjun Patel has submitted their goal sheet for review', '#/manager/review/' + gs1Id);
   notify.run(uuidv4(), emp1Id, 'info', 'Goals Submitted', 'Your goal sheet has been submitted for manager approval', '#/goals');
+
+  const emailLog = db.prepare(`INSERT INTO email_log (id, recipientEmail, recipientName, type, subject, status, channel) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  emailLog.run(uuidv4(), 'rajesh.kumar@atomberg.com', 'Rajesh Kumar', 'submission', 'New Goal Sheet Submitted — Arjun Patel', 'sent', 'email');
+  emailLog.run(uuidv4(), 'arjun.patel@atomberg.com', 'Arjun Patel', 'confirmation', 'Your Goal Sheet Has Been Submitted Successfully', 'sent', 'email');
+  emailLog.run(uuidv4(), 'rajesh.kumar@atomberg.com', 'Rajesh Kumar', 'teams', 'Teams: Arjun Patel submitted goal sheet for FY 2026-27', 'delivered', 'teams');
+
+  const escLog = db.prepare(`INSERT INTO escalation_log (id, ruleId, triggerType, employeeId, escalatedToId, escalationLevel, detail, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+  const ruleId1 = db.prepare("SELECT id FROM escalation_rules WHERE triggerType = 'goal_not_submitted'").get()?.id;
+  escLog.run(uuidv4(), ruleId1, 'goal_not_submitted', emp2Id, mgr1Id, 1, 'Goal sheet not submitted — 7 days overdue', 'pending');
+  escLog.run(uuidv4(), ruleId1, 'goal_not_submitted', emp3Id, mgr1Id, 1, 'Goal sheet not submitted — 7 days overdue', 'pending');
+  escLog.run(uuidv4(), ruleId1, 'goal_not_submitted', emp2Id, adminId, 2, 'Auto-escalated to HR — 14 days overdue', 'pending');
+
+  db.prepare(`INSERT INTO audit_log (id, entityType, entityId, action, changedBy, field, oldValue, newValue) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(uuidv4(), 'goal_sheet', gs1Id, 'submitted', emp1Id, 'status', 'draft', 'submitted');
 }
 
 export default db;

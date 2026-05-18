@@ -188,60 +188,34 @@ export async function renderReports(el) {
         </div>`;
 
     } else if (tab === 'emails') {
+      const emails = await api.reports.getEmailLog();
+      const typeColors = { submission:'badge-info', confirmation:'badge-success', approval:'badge-success', rejection:'badge-danger', reminder:'badge-warning', checkin:'badge-warning', escalation:'badge-danger', teams:'badge-info' };
+      const channelIcons = { email:'📧', teams:'💬', in_app:'🔔' };
+
       content.innerHTML = `
         <div class="glass-card" style="padding:24px;margin-bottom:24px">
-          <h3 style="margin-bottom:8px">📧 Email & Notification Log</h3>
-          <p style="font-size:var(--text-sm)">Automated notifications sent for key portal events</p>
+          <div class="flex-between">
+            <div><h3 style="margin-bottom:4px">📧 Email & Notification Log</h3><p style="font-size:var(--text-sm)">Automated notifications sent for key portal events</p></div>
+            <div class="flex gap-sm">
+              <span class="badge badge-success">${emails.filter(e => e.status === 'sent').length} Sent</span>
+              <span class="badge badge-info">${emails.filter(e => e.status === 'delivered').length} Delivered</span>
+            </div>
+          </div>
         </div>
+        ${emails.length === 0 ? '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">No emails sent yet</div><p class="empty-state-text">Email notifications will appear here as portal events occur</p></div>' : `
         <div class="glass-card" style="overflow:hidden">
           <table class="data-table">
-            <thead><tr><th>Timestamp</th><th>Type</th><th>Recipient</th><th>Subject</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr>
-                <td>${new Date().toLocaleString()}</td>
-                <td><span class="badge badge-info">Submission</span></td>
-                <td>rajesh.kumar@atomberg.com</td>
-                <td>📋 New Goal Sheet Submitted — Arjun Patel</td>
-                <td><span class="badge badge-success">Sent</span></td>
-              </tr>
-              <tr>
-                <td>${new Date(Date.now() - 60000).toLocaleString()}</td>
-                <td><span class="badge badge-success">Approval</span></td>
-                <td>arjun.patel@atomberg.com</td>
-                <td>✅ Your Goal Sheet Has Been Approved</td>
-                <td><span class="badge badge-success">Sent</span></td>
-              </tr>
-              <tr>
-                <td>${new Date(Date.now() - 120000).toLocaleString()}</td>
-                <td><span class="badge badge-warning">Reminder</span></td>
-                <td>sneha.reddy@atomberg.com</td>
-                <td>⏰ Reminder: Submit Your Goal Sheet — 5 Days Remaining</td>
-                <td><span class="badge badge-success">Sent</span></td>
-              </tr>
-              <tr>
-                <td>${new Date(Date.now() - 180000).toLocaleString()}</td>
-                <td><span class="badge badge-warning">Check-in</span></td>
-                <td>vikram.singh@atomberg.com</td>
-                <td>📝 Q1 Check-in Window is Now Open</td>
-                <td><span class="badge badge-success">Sent</span></td>
-              </tr>
-              <tr>
-                <td>${new Date(Date.now() - 240000).toLocaleString()}</td>
-                <td><span class="badge badge-danger">Escalation</span></td>
-                <td>rajesh.kumar@atomberg.com</td>
-                <td>🚨 Escalation: Sneha Reddy — Goals Not Submitted (7 days overdue)</td>
-                <td><span class="badge badge-success">Sent</span></td>
-              </tr>
-              <tr>
-                <td>${new Date(Date.now() - 300000).toLocaleString()}</td>
-                <td><span class="badge badge-info">Teams</span></td>
-                <td>anita.desai@atomberg.com</td>
-                <td>🔔 Teams: Meera Joshi updated Q1 achievement data</td>
-                <td><span class="badge badge-success">Delivered</span></td>
-              </tr>
-            </tbody>
+            <thead><tr><th>Timestamp</th><th>Channel</th><th>Type</th><th>Recipient</th><th>Subject</th><th>Status</th></tr></thead>
+            <tbody>${emails.map(e => `<tr>
+              <td style="white-space:nowrap;font-size:var(--text-sm)">${new Date(e.createdAt).toLocaleString()}</td>
+              <td>${channelIcons[e.channel]||'📧'} <span style="font-size:var(--text-xs);text-transform:capitalize">${e.channel}</span></td>
+              <td><span class="badge ${typeColors[e.type]||'badge-neutral'}">${e.type}</span></td>
+              <td style="font-size:var(--text-sm)">${e.recipientEmail}</td>
+              <td style="font-size:var(--text-sm)">${e.subject}</td>
+              <td><span class="badge ${e.status==='sent'?'badge-success':e.status==='delivered'?'badge-info':'badge-danger'}">${e.status}</span></td>
+            </tr>`).join('')}</tbody>
           </table>
-        </div>
+        </div>`}
         <div class="glass-card" style="padding:20px;margin-top:24px">
           <h4 style="margin-bottom:12px">📨 Email Template Preview</h4>
           <div class="glass-panel" style="padding:20px;max-width:600px">

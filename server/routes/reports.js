@@ -124,4 +124,9 @@ router.get('/analytics/manager-effectiveness', (req, res) => {
   res.json(data);
 });
 
+router.get('/email-log', (req, res) => {
+  const logs = db.prepare('SELECT * FROM email_log ORDER BY createdAt DESC LIMIT 100').all();
+  res.json(logs);
+});
+
 export default router;

@@ -17,6 +17,7 @@ export const api = {
     getUsers: () => request('/auth/users'),
     getUsersByRole: (role) => request(`/auth/users/${role}`),
     login: (userId) => request('/auth/login', { method: 'POST', body: JSON.stringify({ userId }) }),
+    loginWithCredentials: (email, password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
     getUser: (id) => request(`/auth/user/${id}`),
     getTeam: (managerId) => request(`/auth/team/${managerId}`),
   },
@@ -57,6 +58,8 @@ export const api = {
     createEscalationRule: (data) => request('/admin/escalation-rules', { method: 'POST', body: JSON.stringify(data) }),
     updateEscalationRule: (id, data) => request(`/admin/escalation-rules/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteEscalationRule: (id) => request(`/admin/escalation-rules/${id}`, { method: 'DELETE' }),
+    getEscalationLogs: () => request('/admin/escalation-logs'),
+    updateEscalationLog: (id, data) => request(`/admin/escalation-logs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     getStats: () => request('/admin/stats'),
     getAllUsers: () => request('/admin/all-users'),
   },
@@ -73,6 +76,7 @@ export const api = {
       const q = new URLSearchParams(params).toString();
       return request(`/reports/audit${q ? '?' + q : ''}`);
     },
+    getEmailLog: () => request('/reports/email-log'),
     getQoQ: () => request('/reports/analytics/qoq'),
     getDeptAnalytics: () => request('/reports/analytics/department'),
     getManagerEffectiveness: () => request('/reports/analytics/manager-effectiveness'),

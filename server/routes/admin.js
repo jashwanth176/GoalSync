@@ -129,8 +129,29 @@ router.get('/stats', (req, res) => {
 });
 
 router.get('/all-users', (req, res) => {
-  const users = db.prepare(`SELECT u.*, m.name as managerName FROM users u LEFT JOIN users m ON u.managerId = m.id ORDER BY u.department, u.name`).all();
+  const users = db.prepare(`SELECT u.id, u.name, u.email, u.department, u.role, u.managerId, u.avatar, u.createdAt, m.name as managerName FROM users u LEFT JOIN users m ON u.managerId = m.id ORDER BY u.department, u.name`).all();
   res.json(users);
+});
+
+router.get('/escalation-logs', (req, res) => {
+  const logs = db.prepare(`
+    SELECT el.*, e.name as employeeName, e.department, t.name as escalatedToName, t.role as escalatedToRole
+    FROM escalation_log el
+    JOIN users e ON el.employeeId = e.id
+    JOIN users t ON el.escalatedToId = t.id
+    ORDER BY el.createdAt DESC
+  `).all();
+  res.json(logs);
+});
+
+router.put('/escalation-logs/:id', (req, res) => {
+  const { status } = req.body;
+  if (status === 'resolved') {
+    db.prepare("UPDATE escalation_log SET status = 'resolved', resolvedAt = datetime('now') WHERE id = ?").run(req.params.id);
+  } else if (status === 'dismissed') {
+    db.prepare("UPDATE escalation_log SET status = 'dismissed', resolvedAt = datetime('now') WHERE id = ?").run(req.params.id);
+  }
+  res.json({ success: true });
 });
 
 export default router;
