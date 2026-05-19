@@ -1,1 +1,5 @@
 node_modules
+dist
+server/portal.db
+server/portal.db-wal
+server/portal.db-shm
