@@ -14,6 +14,11 @@ function addNotification(userId, type, title, message, link) {
     .run(uuidv4(), userId, type, title, message, link || null);
 }
 
+function addEmailLog(recipientEmail, recipientName, type, subject, channel = 'email') {
+  db.prepare(`INSERT INTO email_log (id, recipientEmail, recipientName, type, subject, status, channel) VALUES (?, ?, ?, ?, ?, 'sent', ?)`)
+    .run(uuidv4(), recipientEmail, recipientName, type, subject, channel);
+}
+
 router.get('/sheets', (req, res) => {
   const { employeeId, cycleId, status } = req.query;
   let query = `SELECT gs.*, u.name as employeeName, u.department, u.avatar, c.name as cycleName
@@ -151,6 +156,11 @@ router.post('/sheets/:id/submit', (req, res) => {
   const employee = db.prepare('SELECT * FROM users WHERE id = ?').get(sheet.employeeId);
   if (employee && employee.managerId) {
     addNotification(employee.managerId, 'approval', 'Goal Sheet Submitted', `${employee.name} has submitted their goal sheet for your review`, `#/manager/review/${req.params.id}`);
+    const manager = db.prepare('SELECT * FROM users WHERE id = ?').get(employee.managerId);
+    if (manager) {
+      addEmailLog(manager.email, manager.name, 'submission', `New Goal Sheet Submitted — ${employee.name}`);
+      addEmailLog(employee.email, employee.name, 'confirmation', 'Your Goal Sheet Has Been Submitted Successfully');
+    }
   }
   res.json({ success: true });
 });
@@ -169,6 +179,10 @@ router.post('/sheets/:id/approve', (req, res) => {
 
   addAudit('goal_sheet', req.params.id, 'approved', managerId, 'status', 'submitted', 'approved');
   addNotification(sheet.employeeId, 'success', 'Goals Approved!', 'Your goal sheet has been approved and locked by your manager', '#/goals');
+
+  const emp = db.prepare('SELECT * FROM users WHERE id = ?').get(sheet.employeeId);
+  if (emp) addEmailLog(emp.email, emp.name, 'approval', 'Your Goal Sheet Has Been Approved');
+
   res.json({ success: true });
 });
 
@@ -184,6 +198,10 @@ router.post('/sheets/:id/return', (req, res) => {
 
   addAudit('goal_sheet', req.params.id, 'returned', managerId, 'status', 'submitted', 'returned');
   addNotification(sheet.employeeId, 'warning', 'Goals Returned', `Your goal sheet has been returned for rework. Manager comments: ${comments || 'None'}`, '#/goals');
+
+  const emp = db.prepare('SELECT * FROM users WHERE id = ?').get(sheet.employeeId);
+  if (emp) addEmailLog(emp.email, emp.name, 'rejection', `Your Goal Sheet Has Been Returned — ${comments || 'Please review'}`);
+
   res.json({ success: true });
 });
 
