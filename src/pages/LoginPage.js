@@ -26,7 +26,7 @@ export async function renderLogin(container) {
           <label class="form-label">Password</label>
           <div style="position:relative">
             <input class="form-input" id="loginPassword" type="password" placeholder="Enter your password" autocomplete="current-password">
-            <button type="button" id="togglePassword" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)">👁️</button>
+            <button type="button" id="togglePassword" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:13px;color:var(--text-muted);font-weight:500">Show</button>
           </div>
         </div>
         <button class="btn btn-primary btn-lg" style="width:100%" id="loginBtn">
@@ -36,9 +36,9 @@ export async function renderLogin(container) {
         <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--glass-border)">
           <p style="font-size:var(--text-xs);color:var(--text-muted);text-align:center;margin-bottom:8px">Demo Credentials</p>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-            <button class="btn btn-ghost btn-sm quick-fill" data-email="arjun.patel@atomberg.com" style="font-size:11px;padding:6px 8px">👨‍💼 Employee</button>
-            <button class="btn btn-ghost btn-sm quick-fill" data-email="rajesh.kumar@atomberg.com" style="font-size:11px;padding:6px 8px">👩‍💻 Manager</button>
-            <button class="btn btn-ghost btn-sm quick-fill" data-email="priya.sharma@atomberg.com" style="font-size:11px;padding:6px 8px">🛡️ Admin</button>
+            <button class="btn btn-ghost btn-sm quick-fill" data-email="arjun.patel@atomberg.com" style="font-size:11px;padding:6px 8px">Employee</button>
+            <button class="btn btn-ghost btn-sm quick-fill" data-email="rajesh.kumar@atomberg.com" style="font-size:11px;padding:6px 8px">Manager</button>
+            <button class="btn btn-ghost btn-sm quick-fill" data-email="priya.sharma@atomberg.com" style="font-size:11px;padding:6px 8px">Admin</button>
           </div>
         </div>
       </div>
@@ -53,9 +53,10 @@ export async function renderLogin(container) {
   const loginBtn = document.getElementById('loginBtn');
   const errorDiv = document.getElementById('loginError');
 
-  document.getElementById('togglePassword').addEventListener('click', () => {
+  document.getElementById('togglePassword').addEventListener('click', (e) => {
     const type = passInput.type === 'password' ? 'text' : 'password';
     passInput.type = type;
+    e.target.textContent = type === 'password' ? 'Show' : 'Hide';
   });
 
   document.querySelectorAll('.quick-fill').forEach(btn => {

@@ -9,8 +9,8 @@ export async function renderEmployeeDashboard(el) {
   const activeCycle = cycles.find(c => c.status === 'active') || cycles[0];
   const mySheet = sheets.find(s => s.cycleId === activeCycle?.id);
 
-  const statusMap = { draft: ['📝','Draft','badge-neutral'], submitted: ['📤','Submitted','badge-info'], approved: ['✅','Approved','badge-success'], returned: ['🔄','Returned','badge-warning'] };
-  const [sIcon, sLabel, sBadge] = statusMap[mySheet?.status] || ['—','No Sheet','badge-neutral'];
+  const statusMap = { draft: ['edit','Draft','badge-neutral'], submitted: ['send','Submitted','badge-info'], approved: ['check-circle','Approved','badge-success'], returned: ['rotate-ccw','Returned','badge-warning'] };
+  const [sIcon, sLabel, sBadge] = statusMap[mySheet?.status] || ['minus','No Sheet','badge-neutral'];
 
   let goalCount = 0, totalWeight = 0;
   if (mySheet) {
@@ -23,8 +23,8 @@ export async function renderEmployeeDashboard(el) {
 
   el.innerHTML = `
     <div class="parallax-hero">
-      <h1 class="animate-fade-up">Welcome back, ${currentUser.name.split(' ')[0]} 👋</h1>
-      <p class="animate-fade-up stagger-1">${activeCycle?.name || 'No active cycle'} • ${currentUser.department}</p>
+      <h1 class="animate-fade-up">Welcome back, ${currentUser.name.split(' ')[0]}</h1>
+      <p class="animate-fade-up stagger-1">${activeCycle?.name || 'No active cycle'} &bull; ${currentUser.department}</p>
       <div class="stats-row">
         <div class="stat-card glass-card animate-fade-up stagger-2">
           <div class="stat-value">${goalCount}</div>
@@ -35,7 +35,7 @@ export async function renderEmployeeDashboard(el) {
           <div class="stat-label">Total Weightage</div>
         </div>
         <div class="stat-card glass-card animate-fade-up stagger-4">
-          <div class="stat-value">${sIcon}</div>
+          <div class="stat-value"><i data-lucide="${sIcon}" style="width:28px;height:28px"></i></div>
           <div class="stat-label">Sheet Status: ${sLabel}</div>
         </div>
       </div>
@@ -58,9 +58,9 @@ export async function renderEmployeeDashboard(el) {
       <div class="glass-card animate-fade-up stagger-4" style="padding:var(--space-lg)">
         <h3 style="margin-bottom:16px">Quick Actions</h3>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <a href="#/goals" class="btn btn-outline" style="justify-content:flex-start">🎯 View My Goals</a>
-          <a href="#/checkin" class="btn btn-outline" style="justify-content:flex-start">📝 Quarterly Check-in</a>
-          <a href="#/reports" class="btn btn-outline" style="justify-content:flex-start">📈 View Reports</a>
+          <a href="#/goals" class="btn btn-outline" style="justify-content:flex-start"><i data-lucide="target" style="width:16px;height:16px;margin-right:8px"></i> View My Goals</a>
+          <a href="#/checkin" class="btn btn-outline" style="justify-content:flex-start"><i data-lucide="clipboard-check" style="width:16px;height:16px;margin-right:8px"></i> Quarterly Check-in</a>
+          <a href="#/reports" class="btn btn-outline" style="justify-content:flex-start"><i data-lucide="bar-chart-3" style="width:16px;height:16px;margin-right:8px"></i> View Reports</a>
         </div>
       </div>
     </div>`;

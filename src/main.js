@@ -32,23 +32,23 @@ export function showToast(type, title, text) {
 function renderSidebar(role) {
   const items = {
     employee: [
-      { icon: '📊', label: 'Dashboard', path: '#/dashboard' },
-      { icon: '🎯', label: 'My Goals', path: '#/goals' },
-      { icon: '📝', label: 'Check-ins', path: '#/checkin' },
-      { icon: '📈', label: 'Reports', path: '#/reports' },
+      { icon: 'layout-dashboard', label: 'Dashboard', path: '#/dashboard' },
+      { icon: 'target', label: 'My Goals', path: '#/goals' },
+      { icon: 'clipboard-check', label: 'Check-ins', path: '#/checkin' },
+      { icon: 'bar-chart-3', label: 'Reports', path: '#/reports' },
     ],
     manager: [
-      { icon: '📊', label: 'Team Dashboard', path: '#/manager' },
-      { icon: '🎯', label: 'My Goals', path: '#/goals' },
-      { icon: '📝', label: 'Check-ins', path: '#/checkin' },
-      { icon: '📈', label: 'Reports', path: '#/reports' },
+      { icon: 'layout-dashboard', label: 'Team Dashboard', path: '#/manager' },
+      { icon: 'target', label: 'My Goals', path: '#/goals' },
+      { icon: 'clipboard-check', label: 'Check-ins', path: '#/checkin' },
+      { icon: 'bar-chart-3', label: 'Reports', path: '#/reports' },
     ],
     admin: [
-      { icon: '📊', label: 'Dashboard', path: '#/admin' },
-      { icon: '🔗', label: 'Shared Goals', path: '#/admin/shared-goals' },
-      { icon: '⚡', label: 'Escalation', path: '#/admin/escalation' },
-      { icon: '📈', label: 'Reports', path: '#/reports' },
-      { icon: '📋', label: 'Audit Log', path: '#/reports/audit' },
+      { icon: 'layout-dashboard', label: 'Dashboard', path: '#/admin' },
+      { icon: 'link', label: 'Shared Goals', path: '#/admin/shared-goals' },
+      { icon: 'zap', label: 'Escalation', path: '#/admin/escalation' },
+      { icon: 'bar-chart-3', label: 'Reports', path: '#/reports' },
+      { icon: 'file-text', label: 'Audit Log', path: '#/reports/audit' },
     ]
   };
   const navItems = items[role] || items.employee;
@@ -56,23 +56,23 @@ function renderSidebar(role) {
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-logo">
         <img src="/assets/logo.png" alt="AtomBerg">
-        <span>Goal<span style="color:var(--accent)">Sync</span></span>
+        <span style="color:#fff">Goal<span style="color:var(--accent)">Sync</span></span>
       </div>
       <nav class="sidebar-nav">
         <div class="sidebar-section-title">${role.toUpperCase()} MENU</div>
         ${navItems.map(n => `<button class="nav-item" data-path="${n.path}" onclick="window.location.hash='${n.path.replace('#','')}'">
-          <span>${n.icon}</span><span>${n.label}</span>
+          <i data-lucide="${n.icon}" style="width:18px;height:18px"></i><span>${n.label}</span>
         </button>`).join('')}
       </nav>
       <div class="sidebar-footer">
         <div class="sidebar-user">
-          <div class="avatar">${currentUser?.avatar || '👤'}</div>
+          <div class="avatar" style="font-size:14px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;border-radius:50%;width:32px;height:32px">${currentUser?.name?.charAt(0) || 'U'}</div>
           <div class="sidebar-user-info">
             <div class="sidebar-user-name">${currentUser?.name || 'User'}</div>
             <div class="sidebar-user-role">${role}</div>
           </div>
         </div>
-        <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="window.location.hash='/login'">🔄 Switch Role</button>
+        <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="window.location.hash='/login'"><i data-lucide="repeat" style="width:14px;height:14px;margin-right:4px"></i> Switch Role</button>
       </div>
     </aside>`;
 }
@@ -152,12 +152,13 @@ async function renderPage(route) {
       case 'reports': await renderReports(content); break;
       case 'audit': await renderAudit(content); break;
       case 'notifications': await renderNotifications(content); break;
-      default: content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚧</div><div class="empty-state-title">Page Not Found</div></div>';
+      default: content.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><i data-lucide="construction" style="width:48px;height:48px"></i></div><div class="empty-state-title">Page Not Found</div></div>';
     }
   } catch(e) {
     console.error(e);
-    content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Error</div><p class="empty-state-text">${e.message}</p></div>`;
+    content.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i data-lucide="alert-triangle" style="width:48px;height:48px"></i></div><div class="empty-state-title">Error</div><p class="empty-state-text">${e.message}</p></div>`;
   }
+  if (typeof lucide !== 'undefined') lucide.createIcons();
   loadNotifCount();
 }
 
@@ -169,9 +170,9 @@ async function renderNotifications(el) {
       <button class="btn btn-outline btn-sm" id="markAllRead">Mark All Read</button>
     </div>
     <div class="glass-card" style="padding:0;overflow:hidden">
-      ${notifs.length === 0 ? '<div class="empty-state"><div class="empty-state-icon">🔔</div><div class="empty-state-title">No notifications</div></div>' :
+      ${notifs.length === 0 ? '<div class="empty-state"><div class="empty-state-icon"><i data-lucide="bell-off" style="width:48px;height:48px"></i></div><div class="empty-state-title">No notifications</div></div>' :
       notifs.map(n => `<div class="flex gap-md" style="padding:16px 20px;border-bottom:1px solid var(--glass-border);opacity:${n.isRead?0.6:1};cursor:pointer" data-link="${n.link||''}" data-nid="${n.id}">
-        <div style="font-size:24px">${n.type==='success'?'✅':n.type==='warning'?'⚠️':n.type==='approval'?'📋':'🔔'}</div>
+        <div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${n.type==='success'?'var(--success-dim)':n.type==='warning'?'var(--warning-dim)':'var(--info-dim)'};color:${n.type==='success'?'var(--success)':n.type==='warning'?'var(--warning)':'var(--info)'}"><i data-lucide="${n.type==='success'?'check-circle':n.type==='warning'?'alert-triangle':n.type==='approval'?'clipboard-list':'bell'}" style="width:18px;height:18px"></i></div>
         <div style="flex:1"><div style="font-weight:600;font-size:var(--text-sm)">${n.title}</div><div style="font-size:var(--text-xs);color:var(--text-muted)">${n.message}</div><div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:4px">${new Date(n.createdAt).toLocaleString()}</div></div>
         ${n.isRead?'':'<div class="status-dot submitted"></div>'}
       </div>`).join('')}
